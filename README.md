@@ -1,6 +1,13 @@
 # OctoPrint-Queue
 
-**TODO:** Describe what your plugin does.
+**Work in progress**
+
+This plugin will add a print queue to your sidebar that you can load files to.
+
+When a print finishes, you will remove the print and press the success
+button to tell the plugin to proceed with the next item in the queue.
+
+This plugin has optional support for an external button wired to the raspberry PI's GPIO pins.
 
 ## Setup
 
@@ -9,9 +16,6 @@ or manually using this URL:
 
     https://github.com/ericmoritz/OctoPrint-Queue/archive/master.zip
 
-**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
-the plugin manager.
-
 ## Configuration
 
-**TODO:** Describe your plugin's configuration options (if any).
+If you want to use the external button, install a button to the GPIO pin: *TBD*
