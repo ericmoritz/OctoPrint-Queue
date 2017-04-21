@@ -12,26 +12,106 @@ from __future__ import absolute_import
 import octoprint.plugin
 from octoprint_queue.queue import PrintQueue, QueueItem
 from flask import jsonify, request, redirect, url_for
+from pprint import pformat
+import json
+import os
 
 class QueuePlugin(octoprint.plugin.AssetPlugin,
                   octoprint.plugin.BlueprintPlugin,
+                  octoprint.plugin.SettingsPlugin,
+                  octoprint.plugin.EventHandlerPlugin,
                   octoprint.plugin.TemplatePlugin):
 
-        def __init__(self):
+        def initialize(self):
                 self.q = PrintQueue([], 0, 'stopped')
+                self.q_path = os.path.join(
+                        self.get_plugin_data_folder(),
+                        'q.json'
+                )
+                self.load_q()
+                self._logger.info("__init__".format(self.q))
 
-        def _startQ(self):
-                print "starting q!"
+
+        def print_item(self, q, printAfterSelect=True):
+                item = q.current_item
+                if item and self._printer.is_ready():
+                        self._printer.select_file(
+                                self._file_manager.path_on_disk('local', item.name),
+                                printAfterSelect=printAfterSelect,
+                                sd=False # not supported yet
+                        )
+
+        def on_event(self, event, payload):
+                if event in ('PrintFailed', 'PrintCancelled'):
+                        self.on_print_failed()
+                elif event in ('PrintDone'):
+                        self.on_print_finished()
+                elif event in ('PrintStarted'):
+                        self.on_print_started()
+
+        def on_print_failed(self):
+                self.sync(
+                        self.q.set_status('stopped')
+                )
+
+        def on_print_started(self):
+                if self.q.status == 'paused':
+                        self.sync(
+                                self.q.set_status('running')
+                        )
+                else: # someone started a non-queue item
+                        self.sync(
+                                self.q.set_status('stopped')
+                        )
+
+        def on_print_finished(self):
+                if self.q.status == 'running':
+                        self.sync(
+                                self.q.set_status('paused')
+                        )
+
+        def load_q(self):
+                if os.path.exists(self.q_path):
+                        with open(self.q_path) as fh:
+                                data = json.load(fh)
+                else:
+                        data = {}
+
+
+                self.q = self.q._replace(
+                        cursor=data.get('cursor', 0),
+                        items=[
+                                QueueItem.from_json(x)
+                                for x in data.get('items', [])
+                        ]
+                )
+
+        def save_q(self):
+                data = self.q.json
+                with open(self.q_path, "w") as fh:
+                        json.dump(data, fh)
 
         def sync(self, q):
-                # start the queue if the status goes from stopped to running
-                if self.q.status == 'stopped' and q.status == 'running':
-                        self._startQ()
+                # start the queue if the status goes from stopped or paused to running
+                self._logger.info("From {}".format(pformat(self.q)))
+                self._logger.info("To {}".format(pformat(q)))
 
+                if self.q.status in 'stopped' and q.status == 'running':
+                        # start printing the currently selected item
+                        self.print_item(q)
+                # if we go from running to paused, queue up the next item
+                elif self.q.status == 'paused' and q.status == 'running':
+                        q = q.proceed()
+                        self.print_item(q)
+                # if we go from running to paused, unselect the file
+                # to prevent the user from pressing the print button
+                # on the previous item
+                elif self.q.status == 'running' and q.status == 'paused':
+                        print "unselecting file"
+                        self._printer.unselect_file()
                 # update the q
                 self.q = q
-
-                # TODO store the Q somewhere
+                self.save_q()
 
 	##~~ BlueprintPlugin mixin
         @octoprint.plugin.BlueprintPlugin.route("/q", methods=["GET"])
@@ -78,7 +158,6 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
                         self.q.set_status(request.json)
                 )
                 return redirect(url_for('plugin.queue.REST_q'), code=303)
-
 
         ##~~ TemplatePlugin mixin
         def get_template_configs(self):

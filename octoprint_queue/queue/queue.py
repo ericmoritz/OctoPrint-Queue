@@ -8,6 +8,13 @@ class QueueItem(namedtuple("QueueItem", ["key", "name"])):
             "name": self.name
         }
 
+    @staticmethod
+    def from_json(x):
+        return QueueItem(
+            key=x.get('key'),
+            name=x.get('name')
+        )
+
 PrintQueueBase = namedtuple("PrintQueueBase", ["items", "cursor", "status"])
 
 class PrintQueue(PrintQueueBase):
@@ -30,7 +37,7 @@ class PrintQueue(PrintQueueBase):
             cursor = self.cursor + mod
         )
 
-    def pass_item(self):
+    def proceed(self):
         """
 
         """
@@ -54,8 +61,14 @@ class PrintQueue(PrintQueueBase):
         )
 
     @property
+    def current_item(self):
+        if(len(self.items)):
+            return self.items[self.cursor]
+
+    @property
     def json(self):
         return {
             "cursor": self.cursor,
+            "status": self.status,
             "items": [x.json for x in self.items]
         }

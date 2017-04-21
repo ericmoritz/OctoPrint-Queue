@@ -1,9 +1,24 @@
-<div class="slimScrollDiv" data-bind="foreach: items" id="queue_sidebar">
-  <div class="entry">
-    <div class="arrow" data-bind="visible: $root.cursor() == i"><i class="icon-chevron-right"></i></div>
-    <div class="title" data-bind="text: name"></div>
-    <div class="btn-group action-buttons">
-      <div class="btn btn-mini" data-bind="click: $root.rmItem"><i class="icon-trash"></i></div>
+<div id="queue_sidebar">
+  <div class="slimScrollDiv" data-bind="foreach: items" id="queue_sidebar">
+    <div class="entry">
+      <div class="arrow" data-bind="visible: $root.cursor() == i"><i class="icon-chevron-right"></i></div>
+      <div class="title" data-bind="text: name"></div>
+      <div class="btn-group action-buttons" data-bind="visible: $root.cursor() != i || !$root.isRunning">
+        <div class="btn btn-mini" data-bind="visible: !$parent.isRunning(), click: $root.selectItem"><i class="icon-folder-open"></i></div>
+        <div class="btn btn-mini" data-bind="click: $root.rmItem"><i class="icon-trash"></i></div>
+      </div>
+    </div>
+  </div>
+  <div data-bind="visible: isPrinterReady">
+    <div class="row-fluid">
+      <div class="btn queue-start-btn" data-bind="visible: isStopped, click: startQueue">
+        <i class="icon-play"><span>Start</span></i>
+      </div>
+
+      <div class="btn queue-start-btn" data-bind="visible: isPaused, click: proceed">
+        <i class="icon-next"><span>Next</span></i>
+      </div>
+      <div data-bind="text: status"></div>
     </div>
   </div>
 </div>
