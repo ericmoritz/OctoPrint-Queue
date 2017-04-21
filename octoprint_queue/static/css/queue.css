@@ -1,0 +1,21 @@
+/* TODO: Have your plugin's CSS files generated to here. */
+#queue_sidebar .entry {
+    padding: 5px;
+    line-height: 20px;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+}
+
+#queue_sidebar .arrow {
+    float: left;
+}
+
+#queue_sidebar .title {
+    margin-left: 15px;
+}
+
+#queue_sidebar .action-buttons {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+}
