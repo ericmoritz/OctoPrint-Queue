@@ -83,7 +83,6 @@ $(function() {
                         new QueueItem(i, x.key, x.name)
                     );
                 });
-
             });
         };
 
@@ -153,10 +152,19 @@ $(function() {
             });
         };
 
-        self.timer = window.setInterval(function() {
-            // update the queue state
-            self.updateState();
+        var sjs = new SockJS(SOCKJS_URI);
+        sjs.onmessage = function(msg) {
+            var _event = msg.data.event || {};
+            if (_event.type) {
+                console.log(_event);
+            }
+            if (_event.type == 'PrinterStateChanged') {
+                self.updateState();
+            }
+        };
 
+
+        self.timer = window.setInterval(function() {
             // hack the file listing for the add button
             $('#files .gcode_files .machinecode').each(function(i) {
                 var key = $(this).attr('id');
@@ -176,6 +184,8 @@ $(function() {
                 }
             });
         }, 250);
+
+        self.updateState();
     }
 
     // view model class, parameters for constructor, container to bind to
