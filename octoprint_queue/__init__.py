@@ -58,9 +58,9 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
 
         def update_physical(self, q1, q2):
                 if IS_PI:
-                        if q.status == 'paused':
+                        if q2.status == 'paused':
                                 self.led.blink()
-                        elif q.status == 'running':
+                        elif q2.status == 'running':
                                 self.led.on()
                         else:
                                 self.led.off()
