@@ -11,16 +11,30 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 from octoprint_queue.queue import PrintQueue, QueueItem
+from gpiozero import Button, LED, pi_info
+
 from flask import jsonify, request, redirect, url_for
 from pprint import pformat
 import json
 import os
+
+try:
+        pi_info()
+        IS_PI = True
+except:
+        IS_PI = False
 
 class QueuePlugin(octoprint.plugin.AssetPlugin,
                   octoprint.plugin.BlueprintPlugin,
                   octoprint.plugin.SettingsPlugin,
                   octoprint.plugin.EventHandlerPlugin,
                   octoprint.plugin.TemplatePlugin):
+
+        def get_settings_defaults(self):
+                return {
+                        'button_pin': 21,
+                        'led_pin': 3
+                }
 
         def initialize(self):
                 self.q = PrintQueue([], 0, 'stopped')
@@ -30,7 +44,32 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
                 )
                 self.load_q()
                 self._logger.info("__init__".format(self.q))
+                self.init_physical()
 
+        def init_physical(self):
+                if IS_PI:
+                        self.led = LED(
+                                self._settings.get_int(['led_pin'])
+                        )
+                        self.button = Button(
+                                self._settings.get_int(['button_pin'])
+                        )
+                        self.button.when_released = self.on_button
+
+        def update_physical(self, q1, q2):
+                if IS_PI:
+                        if q2.status == 'paused':
+                                self.led.blink()
+                        elif q2.status == 'running':
+                                self.led.on()
+                        else:
+                                self.led.off()
+
+        def on_button(self):
+                if self.q.status in ('paused', 'stopped'):
+                        self.sync(
+                                self.q.set_status('running')
+                        )
 
         def print_item(self, q, printAfterSelect=True):
                 item = q.current_item
@@ -96,22 +135,21 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
                 self._logger.info("From {}".format(pformat(self.q)))
                 self._logger.info("To {}".format(pformat(q)))
 
-                if self.q.status in 'stopped' and q.status == 'running':
-                        # start printing the currently selected item
+                if self.q.status in ('stopped', 'paused') and q.status == 'running':
+                # start printing the currently selected item
                         self.print_item(q)
-                # if we go from running to paused, queue up the next item
-                elif self.q.status == 'paused' and q.status == 'running':
-                        q = q.proceed()
-                        self.print_item(q)
-                # if we go from running to paused, unselect the file
-                # to prevent the user from pressing the print button
-                # on the previous item
+                # moving from running to paused, we select the next item
                 elif self.q.status == 'running' and q.status == 'paused':
-                        print "unselecting file"
-                        self._printer.unselect_file()
+                        q = q.proceed()
+                        self.print_item(q, printAfterSelect=False)
+
+                self.update_physical(self.q, q)
+
                 # update the q
                 self.q = q
                 self.save_q()
+                self._logger.info("PrinterStateChanged")
+                self._event_bus.fire('PrinterStateChanged')
 
 	##~~ BlueprintPlugin mixin
         @octoprint.plugin.BlueprintPlugin.route("/q", methods=["GET"])
@@ -158,6 +196,12 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
                         self.q.set_status(request.json)
                 )
                 return redirect(url_for('plugin.queue.REST_q'), code=303)
+
+        @octoprint.plugin.BlueprintPlugin.route("/q/button", methods=["POST"])
+        def REST_q_button(self):
+                self.on_button()
+                return redirect(url_for('plugin.queue.REST_q'), code=303)
+
 
         ##~~ TemplatePlugin mixin
         def get_template_configs(self):

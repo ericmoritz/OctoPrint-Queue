@@ -33,7 +33,9 @@ plugin_url = "https://github.com/ericmoritz/OctoPrint-Queue"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = []
+plugin_requires = [
+        "gpiozero==1.3.2"
+]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point
