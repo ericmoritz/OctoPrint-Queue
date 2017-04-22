@@ -143,6 +143,7 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
 
                 # update the q
                 self.q = q
+                self.update_physical(self.q)
                 self.save_q()
                 self._logger.info("PrinterStateChanged")
                 self._event_bus.fire('PrinterStateChanged')
