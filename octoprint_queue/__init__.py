@@ -66,7 +66,7 @@ class QueuePlugin(octoprint.plugin.AssetPlugin,
                                 self.led.off()
 
         def on_button(self):
-                if self.q.status == 'paused':
+                if self.q.status in ('paused', 'stopped'):
                         self.sync(
                                 self.q.set_status('running')
                         )
